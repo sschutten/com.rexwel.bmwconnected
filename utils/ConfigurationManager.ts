@@ -1,4 +1,4 @@
-import { Homey } from "homey";
+import Homey from "homey/lib/Homey";
 import { Configuration } from "./Configuration";
 
 export class ConfigurationManager {
@@ -11,6 +11,7 @@ export class ConfigurationManager {
         }
         return this.configurationCache;
     }
+
     static setConfiguration(homey: Homey, value: Configuration) {
         if (!value.token) {
             // Token value is empty, most likely configuration is being saved from the app, hence, copying the old token.

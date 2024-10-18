@@ -1,4 +1,4 @@
-import { Homey } from "homey";
+import Homey from "homey/lib/Homey";
 import { ConfigurationManager } from "./ConfigurationManager";
 import { ITokenStore, Token } from "bmw-connected-drive";
 import { Configuration } from "./Configuration";

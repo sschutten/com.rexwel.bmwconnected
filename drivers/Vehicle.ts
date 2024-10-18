@@ -1,4 +1,4 @@
-import { Device } from 'homey';
+import { Device, FlowCardTriggerDevice } from 'homey';
 import { BMWConnectedDrive } from '../app';
 import { DeviceData } from '../utils/DeviceData';
 import { CarBrand, ConnectedDrive } from 'bmw-connected-drive';
@@ -9,6 +9,7 @@ import { nameof } from '../utils/Utils';
 import { LocationType } from '../utils/LocationType';
 import { ConfigurationManager } from '../utils/ConfigurationManager';
 import { UnitConverter } from '../utils/UnitConverter';
+import { Geofence } from '../utils/Geofence';
 
 export class Vehicle extends Device {
 
@@ -57,7 +58,7 @@ export class Vehicle extends Device {
                         Latitude: parseFloat(splitString[0]) ?? 0,
                         Longitude: parseFloat(splitString[1]) ?? 0,
                         Address: await this.getCapabilityValue("address_capability")
-                    };
+                    } as LocationType;
                     this.checkGeofence(this.currentLocation);
                     this.app.currentLocation = this.currentLocation;
                 }
@@ -170,20 +171,38 @@ export class Vehicle extends Device {
         }
     }
 
-    private async checkGeofence(location: LocationType) {
+    private async checkGeofence(newLocation: LocationType): Promise<LocationType> {
         const configuration = ConfigurationManager.getConfiguration(this.homey);
-        if (configuration?.geofences) {
-            this.logger?.LogInformation("Checking geofences.")
-            // Checking if the position is inside a geofence.
-            const position = configuration.geofences.find(fence => GeoLocation.IsInsideGeofence(location, fence));
-            if (position) {
-                this.logger?.LogInformation(`Inside geofence '${position.Label}'.`)
-                location.Label = position.Label;
-                return;
-            }
+        if (!configuration?.geofences)
+            return newLocation;
+
+        this.logger?.LogInformation("Checking geofences.")
+
+        // Checking if the position is inside a geofence.
+        const geofence = configuration.geofences.find(fence => GeoLocation.IsInsideGeofence(newLocation, fence));
+
+        // We found a geofence, so we must be inside one
+        if (geofence) {
+            this.logger?.LogInformation(`Inside geofence '${geofence.Label}'.`)
+
+            if (this.currentLocation?.equals(geofence))
+                return geofence;
+
+            this.logger?.LogInformation(`Entered geofence: [${geofence.Label}]`)
+            const geoFenceEnter: FlowCardTriggerDevice = this.homey.flow.getDeviceTriggerCard("geo_fence_enter");
+            geoFenceEnter.trigger(this, geofence, {});
+
+            return geofence;
         }
 
-        location.Label = "";
+        // If the current location was a geofence this means we left the geofence
+        if (this.currentLocation instanceof Geofence) {
+            this.logger?.LogInformation("Exit geofence.")
+            const geoFenceExit: FlowCardTriggerDevice = this.homey.flow.getDeviceTriggerCard("geo_fence_exit");
+            geoFenceExit.trigger(this, this.currentLocation, {});
+        }
+
+        return newLocation;
     }
 
     private async onLocationChanged(newLocation: LocationType) {
@@ -200,31 +219,17 @@ export class Vehicle extends Device {
         const locationChangedFlowCard: any = this.homey.flow.getDeviceTriggerCard("location_changed");
         locationChangedFlowCard.trigger(this, newLocation, {});
 
-        if (oldLocation?.Label !== newLocation.Label) {
-            this.logger?.LogInformation(`Geofence changed. Old Location: [${oldLocation?.Label}]. New Location: [${newLocation.Label}]`)
-            if (newLocation?.Label) {
-                this.logger?.LogInformation("Entered geofence.")
-                const geoFenceEnter: any = this.homey.flow.getDeviceTriggerCard("geo_fence_enter");
-                geoFenceEnter.trigger(this, newLocation, {});
-            }
-            if (oldLocation?.Label) {
-                this.logger?.LogInformation("Exit geofence.")
-                const geoFenceExit: any = this.homey.flow.getDeviceTriggerCard("geo_fence_exit");
-                geoFenceExit.trigger(this, oldLocation, {});
-            }
-        }
-
         this.app.currentLocation = newLocation;
 
         // Currently onLocationChanged is only triggered if location changed and the door is locked.
         const driveSessionCompletedFlowCard: any = this.homey.flow.getDeviceTriggerCard("drive_session_completed");
         driveSessionCompletedFlowCard.trigger(this, {
-            StartLabel: oldLocation?.Label ?? "",
+            StartLabel: oldLocation instanceof Geofence ? oldLocation.Label : "",
             StartLatitude: oldLocation?.Latitude ?? 0,
             StartLongitude: oldLocation?.Longitude ?? 0,
             StartAddress: oldLocation?.Address ?? "",
             StartMileage: oldMileage ?? 0,
-            EndLabel: newLocation?.Label ?? "",
+            EndLabel: newLocation instanceof Geofence ? newLocation.Label : "",
             EndLatitude: newLocation?.Latitude ?? 0,
             EndLongitude: newLocation?.Longitude ?? 0,
             EndAddress: newLocation?.Address ?? "",
@@ -286,7 +291,7 @@ export class Vehicle extends Device {
 
                 if (secured && vehicle.location.coordinates.latitude && vehicle.location.coordinates.longitude) {
                     if (this.currentLocation?.Latitude !== vehicle.location.coordinates.latitude || this.currentLocation?.Longitude !== vehicle.location.coordinates.longitude) {
-                        this.onLocationChanged({ Label: "", Latitude: vehicle.location.coordinates.latitude, Longitude: vehicle.location.coordinates.longitude, Address: vehicle.location.address.formatted });
+                        this.onLocationChanged({ Latitude: vehicle.location.coordinates.latitude, Longitude: vehicle.location.coordinates.longitude, Address: vehicle.location.address.formatted } as LocationType);
                     }
                 }
 

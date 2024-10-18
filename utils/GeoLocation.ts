@@ -1,6 +1,7 @@
 import fetch from "cross-fetch";
 import { LocationType } from "./LocationType";
 import { Logger } from "./Logger";
+import { Geofence } from "./Geofence";
 
 const EARTH_RADIUS = 6378137;
 export class GeoLocation {
@@ -18,7 +19,7 @@ export class GeoLocation {
         const response = await serverResponse.text();
 
         if (!serverResponse.ok) {
-            logger?.LogError(`${serverResponse.status}: Error occurred while attempting to retrieve token. Server response: ${response}`);
+            logger?.LogError(`Error resolving address for Latitude: ${location.Latitude} Longitude: ${location.Longitude}. ${serverResponse.status}: Error occurred while attempting to retrieve token. Server response: ${response}`);
             return undefined;
         }
 
@@ -46,7 +47,7 @@ export class GeoLocation {
         return distance;
     }
 
-    static IsInsideGeofence(location: LocationType, center: LocationType): boolean {
+    static IsInsideGeofence(location: LocationType, center: Geofence): boolean {
         return GeoLocation.distanceTo(center, location) <= (center.Radius ?? 20);
     }
 }

@@ -1,11 +1,11 @@
 import { LogLevel, Regions, Token } from "bmw-connected-drive";
-import { LocationType } from "./LocationType";
+import { Geofence } from "./Geofence";
 
 export class Configuration {
     username: string = "";
     password: string = "";
     region: Regions = Regions.RestOfWorld;
-    geofences: LocationType[] = [];
+    geofences: Geofence[] = [];
     logEnabled: boolean = false;
     logLevel: LogLevel = LogLevel.Warning;
     logRequestCount: number = 20;

@@ -1,5 +1,5 @@
 import { LoggerBase, LogLevel } from "bmw-connected-drive";
-import { Homey } from "homey";
+import Homey from "homey/lib/Homey";
 import { ConfigurationManager } from "./ConfigurationManager";
 
 export class Logger extends LoggerBase {

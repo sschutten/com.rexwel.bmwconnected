@@ -10,6 +10,7 @@ import { Logger } from './utils/Logger';
 import { Configuration } from './utils/Configuration';
 import { LocationType } from './utils/LocationType';
 import inspector from 'inspector';
+import { Geofence } from './utils/Geofence';
 
 // TODO:
 // Window states capability
@@ -29,8 +30,8 @@ export class BMWConnectedDrive extends Homey.App {
    */
   async onInit(): Promise<void> {
     if (process.env.DEBUG === '1') {
-			inspector.open(9229, '0.0.0.0', true);
-		}
+      inspector.open(9229, '0.0.0.0', true);
+    }
 
     this.logger = new Logger(this.homey);
     this.tokenStore = new HomeyTokenStore(this.homey);
@@ -153,7 +154,7 @@ export class BMWConnectedDrive extends Homey.App {
     geofenceCard.registerArgumentAutocompleteListener("geo_fence", async (query: any, args: any) => {
       const configuration = ConfigurationManager.getConfiguration(this.homey);
       if (configuration?.geofences) {
-        const geofences = configuration.geofences.map(item => ({name: item.Label, id: item.Label}));
+        const geofences = configuration.geofences.map(item => ({ name: item.Label, id: item.Label }));
         return geofences.filter(result => result.name?.toLowerCase().includes(query.toLowerCase()));
       }
 
@@ -161,7 +162,7 @@ export class BMWConnectedDrive extends Homey.App {
     });
     geofenceCard.registerRunListener(async (args: any, state: any) => {
       const app = this.homey.app as BMWConnectedDrive
-      return (app.currentLocation && args.geo_fence.id && app.currentLocation.Label === args.geo_fence.id);
+      return (app.currentLocation instanceof Geofence && args.geo_fence.id && app.currentLocation.Label === args.geo_fence.id);
     });
 
     this.homey.flow.getConditionCard('battery_percentage').registerRunListener(async (args: any, _: any) => {

@@ -1,8 +1,8 @@
-import { Homey } from "homey";
+import Homey from "homey/lib/Homey";
 import { BMWConnectedDrive } from "./app";
 import { Configuration } from "./utils/Configuration";
 import { ConfigurationManager } from "./utils/ConfigurationManager";
-import { ConnectedDrive, Regions } from "bmw-connected-drive";
+import { ConnectedDrive } from "bmw-connected-drive";
 import { GeoLocation } from "./utils/GeoLocation";
 import { LocationType } from "./utils/LocationType";
 
@@ -50,7 +50,7 @@ export async function resolveAddress({ homey, query }: { homey: Homey, query: an
     if (isNaN(latitude) || isNaN(longitude)) {
         throw new Error("Latitude and longitude must be valid numbers.");
     }
-    return await GeoLocation.GetAddress({ Latitude: query.latitude, Longitude: query.longitude }, app.logger);
+    return await GeoLocation.GetAddress({ Latitude: query.latitude, Longitude: query.longitude } as LocationType, app.logger);
 }
 
 export async function getCurrentLocation({ homey }: { homey: Homey }): Promise<LocationType | undefined> {
