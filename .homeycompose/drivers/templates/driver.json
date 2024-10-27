@@ -7,10 +7,10 @@
         "alarm_generic",
         "locked",
         "mileage_capability",
-        "range_capability",
         "climate_now_capability",
         "measure_battery",
         "measure_battery.actual",
+        "range_capability",
         "range_capability.battery",
         "range_capability.fuel",
         "charging_status_capability"
@@ -26,6 +26,18 @@
             "title": {
                 "en": "Actual battery",
                 "nl": "Huidige batterij"
+            }
+        },
+        "range_capability.battery": {
+            "title": {
+                "en": "Range (battery)",
+                "nl": "Bereik (accu)"
+            }
+        },
+        "range_capability.fuel": {
+            "title": {
+                "en": "Range (fuel)",
+                "nl": "Bereik (brandstof)"
             }
         }
     },

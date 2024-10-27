@@ -1,6 +1,7 @@
 import { Geofence } from "./Geofence";
 
 export class LocationType {
+    Label: string = "";
     Latitude!: number;
     Longitude!: number;
     Address?: string;
@@ -11,6 +12,7 @@ export class LocationType {
 
         if (this instanceof Geofence && location instanceof Geofence)
             return this.Label === location.Label;
+
         return false;
     }
 }

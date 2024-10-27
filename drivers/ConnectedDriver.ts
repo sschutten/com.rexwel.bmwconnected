@@ -3,7 +3,7 @@ import { BMWConnectedDrive } from '../app';
 import { DeviceData } from '../utils/DeviceData';
 import { Configuration } from '../utils/Configuration';
 import { ConfigurationManager } from '../utils/ConfigurationManager';
-import { CarBrand, ConnectedDrive } from "bmw-connected-drive";
+import { CarBrand, ConnectedDrive, Vehicle } from "bmw-connected-drive";
 import { Settings } from '../utils/Settings';
 
 export class ConnectedDriver extends Driver {
@@ -62,10 +62,10 @@ export class ConnectedDriver extends Driver {
 
       const vehicles = await api.getVehicles();
 
-      return vehicles
+      return await Promise.all(vehicles
         .filter(vehicle => vehicle.attributes.brand === this.brand)
-        .map(vehicle => {
-          this.log(`Vehicle found: ${vehicle.vin}, ${vehicle.attributes.model}`);
+        .map(async (vehicle) => {
+          this.log(`Vehicle found: ${vehicle.vin}, ${vehicle.attributes.model} (${vehicle.attributes.year})`);
 
           if (!vehicle.vin) {
             throw new Error("Cannot list vehicle as vin is empty.");
@@ -75,12 +75,56 @@ export class ConnectedDriver extends Driver {
           deviceData.id = vehicle.vin;
 
           return {
-            "name": `${vehicle.attributes.model} (${vehicle.vin})`,
-            "data": deviceData,
-            "settings": new Settings(),
-            "icon": "icon.svg"
+            name: `${vehicle.attributes.model} (${vehicle.attributes.year})`,
+            data: deviceData,
+            settings: new Settings(),
+            icon: "icon.svg",
+            capabilities: await this.getCapabilities(vehicle),
           };
-        });
+        }));
     });
+  }
+
+  async getCapabilities(vehicle: Vehicle): Promise<string[]> {
+    const api = (this.homey.app as BMWConnectedDrive).connectedDriveApi;
+    var vehicleCapabilities = await api?.getVehicleCapabilities(vehicle.vin, vehicle.attributes.brand);
+
+    var capabilities = [
+      'alarm_generic',
+      'address_capability',
+      'charging_status_capability',
+      'climate_now_capability',
+      'location_capability',
+      'measure_battery',
+      'mileage_capability',
+      'only_lock_unlock_flow_capability',
+      'range_capability',
+    ];
+
+    // If the vehicle is a hybrid, make distinction between battery and fuel
+    if (this.isHybrid(vehicle)) {
+      capabilities.push('range_capability.battery');
+      capabilities.push('range_capability.fuel');
+    }
+
+    // If the vehicle has a combustion engine, add fuel capabilities
+    if (this.isHybrid(vehicle) || this.isFuel(vehicle)) {
+      capabilities.push('remaining_fuel_capability');
+      capabilities.push('remaining_fuel_liters_capability');
+    }
+
+    return capabilities;
+  }
+
+  isHybrid(vehicle: Vehicle): boolean {
+    return vehicle.attributes.driveTrain in ['PLUGIN_HYBRID', 'ELECTRIC_WITH_RANGE_EXTENDER', 'HYBRID', 'MILD_HYBRID'];
+  }
+
+  isElectric(vehicle: Vehicle): boolean {
+    return vehicle.attributes.driveTrain in ['ELECTRIC'];
+  }
+
+  isFuel(vehicle: Vehicle): boolean {
+    return vehicle.attributes.driveTrain in ['COMBUSTION'];
   }
 }

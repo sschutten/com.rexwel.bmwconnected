@@ -35,7 +35,6 @@ export class Vehicle extends Device {
         this.deviceData = this.getData() as DeviceData;
         this.settings = this.getSettings() as Settings;
 
-        await this.CleanupCapability("measure_battery.actual");
         if (this.hasCapability("remanining_fuel_liters_capability")) {
             let oldFuelValue = await this.CleanupCapability("remanining_fuel_liters_capability");
             await this.UpdateCapabilityValue("remaining_fuel_liters_capability", oldFuelValue);
@@ -216,7 +215,7 @@ export class Vehicle extends Device {
         this.currentMileage = this.getCapabilityValue("mileage_capability");
         await this.UpdateCapabilityValue("location_capability", `${newLocation.Latitude}:${newLocation.Longitude}`);
         await this.UpdateCapabilityValue("address_capability", newLocation.Address);
-        const locationChangedFlowCard: any = this.homey.flow.getDeviceTriggerCard("location_changed");
+        const locationChangedFlowCard: FlowCardTriggerDevice = this.homey.flow.getDeviceTriggerCard("location_changed");
         locationChangedFlowCard.trigger(this, newLocation, {});
 
         this.app.currentLocation = newLocation;
@@ -263,15 +262,13 @@ export class Vehicle extends Device {
                 await this.UpdateCapabilityValue("alarm_generic", !secured);
 
                 let triggerChargingStatusChange = false;
-                if (this.hasCapability("measure_battery")) {
-                    await this.UpdateCapabilityValue("measure_battery", vehicle.electricChargingState.chargingLevelPercent);
-                    await this.UpdateCapabilityValue("range_capability.battery", UnitConverter.ConvertDistance(vehicle.electricChargingState.range, this.settings.distanceUnit));
-                    await this.UpdateCapabilityValue("range_capability.fuel", UnitConverter.ConvertDistance(vehicle.combustionFuelLevel.range, this.settings.distanceUnit));
-                    const oldChargingStatus = this.getCapabilityValue("charging_status_capability");
-                    await this.UpdateCapabilityValue("charging_status_capability", vehicle.electricChargingState.chargingStatus);
-                    if (oldChargingStatus !== vehicle.electricChargingState.chargingStatus) {
-                        triggerChargingStatusChange = true;
-                    }
+                await this.UpdateCapabilityValue("measure_battery", vehicle.electricChargingState.chargingLevelPercent);
+                await this.UpdateCapabilityValue("range_capability.battery", UnitConverter.ConvertDistance(vehicle.electricChargingState.range, this.settings.distanceUnit));
+                await this.UpdateCapabilityValue("range_capability.fuel", UnitConverter.ConvertDistance(vehicle.combustionFuelLevel.range, this.settings.distanceUnit));
+                const oldChargingStatus = this.getCapabilityValue("charging_status_capability");
+                await this.UpdateCapabilityValue("charging_status_capability", vehicle.electricChargingState.chargingStatus);
+                if (oldChargingStatus !== vehicle.electricChargingState.chargingStatus) {
+                    triggerChargingStatusChange = true;
                 }
 
                 if (this.hasCapability("locked")) {
@@ -326,16 +323,14 @@ export class Vehicle extends Device {
         }
     }
 
-    private async UpdateCapabilityValue(name: string, value: any): Promise<boolean> {
-        if (value || value === 0 || value === false) {
-            if (!this.hasCapability(name)) {
-                await this.addCapability(name);
-            }
-            await this.setCapabilityValue(name, value);
-            return true;
-        }
+    private async UpdateCapabilityValue(name: string, value: any): Promise<void> {
+        if (!this.hasCapability(name))
+            return;
 
-        return false;
+        if (!value && value !== 0 && value !== false)
+            return;
+
+        await this.setCapabilityValue(name, value);
     }
 
     private async CleanupCapability(name: string): Promise<any> {
